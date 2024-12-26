@@ -51,7 +51,7 @@ class StocksDataFinder:
         await self.async_limiter.acquire()
         max_retry = STOCKS_DATA_CONFIG.RETRY
         async with session.get(url, params=params) as response:
-            print("hey")
+            print("hey now")
             for i in range(max_retry):
                 try:
                     response_json = await response.json()
