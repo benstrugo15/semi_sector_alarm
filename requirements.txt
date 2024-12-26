@@ -1,0 +1,7 @@
+requests
+pandas
+pyyaml
+pydantic
+secure-smtplib
+aiohttp
+aiolimiter

@@ -1,0 +1,7 @@
+EOD_URL: "https://eodhd.com/api/"
+SYMBOLS_ROUTE: "exchange-symbol-list/"
+PRICES_ROUTE: "eod/"
+NASDAQ: "NASDAQ"
+NYSE: "NYSE"
+RETRY: 10
+PERCENT_FILTER: 5
