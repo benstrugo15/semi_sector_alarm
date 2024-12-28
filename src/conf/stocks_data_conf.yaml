@@ -5,3 +5,4 @@ NASDAQ: "NASDAQ"
 NYSE: "NYSE"
 RETRY: 10
 PERCENT_FILTER: 5
+FINNHUB_URL: "https://finnhub.io/api/v1/company-news"

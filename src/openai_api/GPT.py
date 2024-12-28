@@ -1,3 +1,4 @@
+import pandas as pd
 import requests
 from typing import Union, Dict, List, Any
 from src.conf.conf_loader import OPEN_AI_CONFIG
@@ -6,59 +7,117 @@ import os
 
 
 class GPTApi:
-    def __init__(self, upside_stocks: Dict[str, Any]):
-        self.upside_stocks = upside_stocks
+    def __init__(self, stocks_overview: List[Dict[str, str]], stocks_news, relevant_stocks_prices):
+        self.stocks_overview = stocks_overview
+        self.stocks_news = stocks_news
+        self.relevant_stocks_prices = relevant_stocks_prices
 
     def gpt4_pipline(self):
-        relevant_sectors_prompt = self.create_sector_tag_prompt()
-        sector_data = relevant_sectors_prompt + json.dumps(self.upside_stocks)
-        relevant_sectors = self.query_gpt4(sector_data)
-        exploration_prompt = self.create_exploration_prompt()
-        sectors_with_exploration = exploration_prompt + json.dumps(relevant_sectors)
-        sectors_with_exploration_data = self.query_gpt4(sectors_with_exploration)
-        email_prompt = self.create_email_prompt()
-        email_pdf = email_prompt + json.dumps(sectors_with_exploration_data)
-        email_data = self.query_gpt4(email_pdf)
-        return email_data
+        relevant_symbols_query = self.create_exploration_prompt(str(self.stocks_overview))
+        stocks_semi_sectors = self.query_gpt4(relevant_symbols_query, "exploration_prompt")
+        all_relevant_stocks_data = self.merge_stocks_data(stocks_semi_sectors)
+        return all_relevant_stocks_data
 
-    def query_gpt4(self, message_text):
+    def query_gpt4(self, message_text, query_type: str):
         data = {
             "model": OPEN_AI_CONFIG.MODEL,
-            "messages": [{"role": OPEN_AI_CONFIG.ROLE, "content": message_text}]
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are an assistant that provides stock-related insights."
+                }
+
+                ,
+                {"role": "user",
+                  "content": message_text
+                  }
+            ]
+            
         }
         headers = {"Content-Type": "application/json", "Authorization": os.getenv("OPENAI_TOKEN")}
         response = requests.post(OPEN_AI_CONFIG.URL, headers=headers, json=data)
-        return response.json()
+        response_data = response.json()['choices'][0]['message']['content']
+        if query_type == "exploration_prompt":
+            start_index = response_data.find("[")
+            end_index = response_data.rfind("]") + 1
+            parse_data = json.loads(response_data[start_index: end_index])
+            return parse_data
+        return response_data
+
+    def merge_stocks_data(self, stocks_semi_sectors: List[Dict[str, str]]):
+        organized_stocks_semi_sectors = pd.DataFrame(stocks_semi_sectors).drop(columns=["company_overview"])
+        organized_stocks_news = pd.DataFrame(self.stocks_news)
+        organized_stocks_overview = pd.DataFrame(self.stocks_overview)
+        all_relevant_data = organized_stocks_semi_sectors.\
+            merge(organized_stocks_news).\
+            merge(organized_stocks_overview).merge(self.relevant_stocks_prices)
+        grouped = all_relevant_data.groupby('symbol').agg({
+            'news_source': '***'.join,'news_data': '***'.join}).reset_index()
+        other_columns = all_relevant_data.drop(['news_source', 'news_data'], axis=1).drop_duplicates()
+        concat_data = pd.merge(grouped, other_columns, on='symbol', how='left')
+        return concat_data.to_dict(orient="records")
+
 
     @staticmethod
     def create_sector_tag_prompt():
         return "can you categorize the following list of stocks into their specific micro-sectors" \
-               "or sub-industries? return it to me in this format: list of dicts, every dict will have 2 keys" \
-               "micro_sector: str, stocks: Lisr[str]," \
-               " and then filter only the micro_sector with 2 or more values" \
+               "or sub-industries? return it to me in the same format i sent you, just append for every dict the key semi_sector" \
+               "and the value" \
+               "and then filter only the micro_sector with 2 or more unique stocks symbols" \
 
     @staticmethod
-    def create_exploration_prompt():
-        return "for every semi_sector i want you to check multiple things:" \
-               "1. give a short summary of the semi_sector, " \
-               "give a summary on every stock in the semi_sector" \
-               "2. tell me for every semi_sector if this future oriented semi_sector"\
-               "3. check news in the internet from the last week on every semi_sector and every stock in the semi secotr" \
-               "4. for every semi sector i want you to give me a very short summary of why the sector is up this week,"\
-               "do it the same for every stock"\
-               "check only in american sources"\
-                "translate everything to hebrew and give all sources url"
+    def create_exploration_prompt(symbols: str):
+        return f"""
+                Provide the response in JSON format, with no ' character,
+                i give you list of dicts, every dict have 2 keys: symbol, company_overview,
+                the symbol is a stock symbol,
+                and the company_overview is a company overview
+                use the data i provide you, to add every dict, 4 more keys:
+                "sub_sector" and the value of the sub_sector.
+                the sub_sector value will be "specific, concise tag of the company",
+                "sub_sector_overview" and the value of that - a sub sector brief summary (not company, the sub_sector)
+                "is_semi_sector_future_potential" and the value will be true if the semi_sector have
+                 extraordinary breakthroughs in the future, false if it is not,
+                "semi_sector_future_potential_overview": the value will be the reason it have 
+                extraordinary breakthroughs in the future. 
+                if there are stocks symbols that have similar concise, give them the same tag
+                understand from the company overview
+                the data you need to work on: 
+                
+                {symbols}"""
 
     @staticmethod
-    def create_email_prompt():
-        return """transform data to beautiful email:
+    def create_email_prompt(stoks_data):
+        return f"""transform data to beautiful css, html email:
+                all the data i will give you will be translate to hebrew,the email will be full hebrew.
                 i want you to take all the data and create beautiful email, bold titles and paragraph names.
-                first, will be with title 'סמי סקטורים עתידניים בפריצה'
-                in the start, will be the current date and the name of all the relevant semi sectors.
-                after, for every semi sectors, i want you to prepare the data like this:
-                first paragraph: "סקירה קצרה על הסקטור"
-                second paragraph: "סקירה קצרה על הסקטור"
-                third paragraph: "למה הסקטור הוא עם פוטנציאל לעתיד"
-                forth paragraph: "החדשות שהיו השבוע על הסקטור"
+                first, will be with title 'סמי סקטורים עתידניים בפריצה':
+                in the start,
+                will be the current date and the name of all the unique values of sub_sectors.
+                under, will be in small title every sub_sector, and row below for every unique 
+                symbol in the sub_sector show:
+                first "מחיר" will be the value of last_price
+                second "שינוי יומי" will be the value of last_percent
+                third "שינוי ב7 ימי המסחר האחרוני" will be the value of start_end_percent
+                after, for every sub_sectors, i want you to prepare the data like this:
+                the sub title will be: sub_sector
+                first paragraph: "סקירה על הסאב סקטור" :
+                 value will be the value of sub_sector_overview
+                second paragraph: "סקירה על המניות" :
+                 every sub title will be the value of symbol from the semi sector
+                ,and the details will be values of company_overview from the symbol
+                third paragraph: "האם הסקטור הוא עם פוטנציאל לעתיד":
+                 value will be the value is_semi_sector_futue_potential
+                and the details will be the value of semi_sector_futue_potential_overview
+                forth paragraph: "חדשות תומכות":
+                every sub title will be the value of symbol from the semi sector
+                ,and the details will be values of news_data from the symbol,
+                and the news_source value of the news_data
+                
                 i want every paragraph will be on every semi_sector and if there is no data
-                in specific paragraph, please write 'ללא נתונים'"""
+                in specific paragraph, please write 'ללא נתונים'
+                all the links will transform to hyperlink "source"
+                
+                the data you base on:
+                
+                {stoks_data}"""
