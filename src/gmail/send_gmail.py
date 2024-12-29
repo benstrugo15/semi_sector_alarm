@@ -68,7 +68,6 @@ class EmailSender:
             html_content += f"<h2>{sub_sector}</h2>"
             sector_data = [item for item in self.gmail_data if item['sub_sector'] == sub_sector]
             for item in sector_data:
-                # Split news data and sources
                 news_pieces = list(set(item['news_data'].split('***')))
                 sources = list(set(item['news_source'].split('***')))
                 news_html = "<ul>" + "".join(
@@ -77,9 +76,10 @@ class EmailSender:
 
                 html_content += f"""
                 <h3>{item['symbol']}</h3>
+                <p><strong>שינוי יומי:</strong> {format(item['marketCap'])} + "$"%</p>
                 <p><strong>מחיר:</strong> {item['last_price']}</p>
-                <p><strong>שינוי יומי:</strong> {item['last_percent']}%</p>
-                <p><strong>שינוי ב7 ימי המסחר האחרונים:</strong> {item['start_end_percent']}%</p>
+                <p><strong>שינוי יומי:</strong> {str(round(int(item['last_percent'],2)))}%</p>
+                <p><strong>שינוי ב7 ימי המסחר האחרונים:</strong> {str(round(int(item['start_end_percent'],2)))}%</p>
                 <p><strong>סקירה על הסאב סקטור:</strong> {item['sub_sector_overview']}</p>
                 <p><strong>סקירה על המניות:</strong> {item['company_overview']}</p>
                 <p><strong>האם הסקטור הוא עם פוטנציאל לעתיד:</strong> {'כן' if item['is_semi_sector_future_potential'] else 'לא'} - {item['semi_sector_future_potential_overview']}</p>

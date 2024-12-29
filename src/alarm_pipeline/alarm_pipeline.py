@@ -8,8 +8,10 @@ from typing import List, Dict
 
 class AlarmPipe:
     def __init__(self, date_now: datetime):
-        self.end_time = (date_now- timedelta(days=3)).strftime("%Y-%m-%d")
-        self.start_time = (date_now - timedelta(days=11)).strftime("%Y-%m-%d")
+        self.end_time = "2024-10-16"
+        self.start_time = "2024-10-09"
+        # self.end_time = (date_now- timedelta(days=3)).strftime("%Y-%m-%d")
+        # self.start_time = (date_now - timedelta(days=11)).strftime("%Y-%m-%d")
 
     async def get_repetative_upside_stocks(self):
         stock_data_finder = SymbolFinder(self.start_time, self.end_time)
@@ -28,7 +30,7 @@ class AlarmPipe:
         return email_data
 
     @staticmethod
-    def send_email(email_data: str):
+    def send_email(email_data: List[Dict[str, str]]):
         email_sender = EmailSender(email_data)
         send_mail = email_sender.send_email()
         return send_mail

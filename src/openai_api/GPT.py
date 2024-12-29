@@ -46,11 +46,13 @@ class GPTApi:
 
     def merge_stocks_data(self, stocks_semi_sectors: List[Dict[str, str]]):
         organized_stocks_semi_sectors = pd.DataFrame(stocks_semi_sectors).drop(columns=["company_overview"])
+        organized_stocks_semi_sectors = organized_stocks_semi_sectors[organized_stocks_semi_sectors["is_semi_sector_future_potential"] == True]
+        organized_stocks_semi_sectors = organized_stocks_semi_sectors.groupby('sub_sector').filter(lambda x: x['symbol'].nunique() >= 2)
         organized_stocks_news = pd.DataFrame(self.stocks_news)
         organized_stocks_overview = pd.DataFrame(self.stocks_overview)
         all_relevant_data = organized_stocks_semi_sectors.\
             merge(organized_stocks_news).\
-            merge(organized_stocks_overview).merge(self.relevant_stocks_prices)
+            merge(organized_stocks_overview).merge(self.relevant_stocks_prices).drop_duplicates()
         grouped = all_relevant_data.groupby('symbol').agg({
             'news_source': '***'.join,'news_data': '***'.join}).reset_index()
         other_columns = all_relevant_data.drop(['news_source', 'news_data'], axis=1).drop_duplicates()
@@ -77,7 +79,7 @@ class GPTApi:
                 the sub_sector value will be "specific, concise tag of the company",
                 "sub_sector_overview" and the value of that - a sub sector brief summary (not company, the sub_sector)
                 "is_semi_sector_future_potential" and the value will be true if the semi_sector have
-                 extraordinary breakthroughs in the future, false if it is not,
+                 extraordinary breakthroughs to change the future, false if it is not,
                 "semi_sector_future_potential_overview": the value will be the reason it have 
                 extraordinary breakthroughs in the future. 
                 if there are stocks symbols that have similar concise, give them the same tag

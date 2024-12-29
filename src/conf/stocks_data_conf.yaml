@@ -5,4 +5,8 @@ NASDAQ: "NASDAQ"
 NYSE: "NYSE"
 RETRY: 10
 PERCENT_FILTER: 5
-FINNHUB_URL: "https://finnhub.io/api/v1/company-news"
+FINNHUB_NEWS_URL: "https://finnhub.io/api/v1/company-news"
+FINNHUB_FUNDAMENTALS_URL: "https://finnhub.io/api/v1/stock/profile2"
+POLYGON_EOD_URL: "https://api.polygon.io/v2/aggs/ticker/"
+POLYGON_FUNDAMENTALS_URL: "https://api.polygon.io/vX/reference/tickers/"
+POLYGON_NEWS_URL: 'https://api.polygon.io/v2/reference/news'

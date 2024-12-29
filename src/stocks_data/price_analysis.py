@@ -13,12 +13,12 @@ class SymbolFinder:
     def __init__(self, start_time: str, end_time: str):
         self.start_time = start_time
         self.end_time = end_time
-        self.async_limiter = AsyncLimiter(8,1)
+        self.async_limiter = AsyncLimiter(20,1)
 
 
     async def get_relevant_data(self):
-        all_nasdaq_symbols = self.create_symbols_query(STOCKS_DATA_CONFIG.NASDAQ)[:20]
-        all_nyse_symbols = self.create_symbols_query(STOCKS_DATA_CONFIG.NYSE)[:20]
+        all_nasdaq_symbols = self.create_symbols_query(STOCKS_DATA_CONFIG.NASDAQ)
+        all_nyse_symbols = self.create_symbols_query(STOCKS_DATA_CONFIG.NYSE)
         all_us_symbols = all_nyse_symbols + all_nasdaq_symbols
         all_symbols_data = await self.create_querys_pool(all_us_symbols)
         all_stocks_data = pd.concat([pd.DataFrame(x) for x in all_symbols_data if x != []])
@@ -28,17 +28,19 @@ class SymbolFinder:
     def analayze_data(self, all_symbols_data: pd.DataFrame):
         all_symbols_data['date'] = pd.to_datetime(all_symbols_data['date'])
         all_symbols_data = all_symbols_data.sort_values(['symbol', 'date'])
-        all_symbols_data['percent'] = all_symbols_data.groupby('symbol')['close'].diff()
-        all_symbols_data['start_end_percent'] = all_symbols_data.groupby('symbol')['close'].transform(lambda x: x.iloc[-1] - x.iloc[0])
+        all_symbols_data['percent'] = all_symbols_data.groupby('symbol')['close'].pct_change() * 100
+        all_symbols_data['start_end_percent'] = all_symbols_data.groupby('symbol')['close'].transform(lambda x: ((x.iloc[-1] - x.iloc[0]) / x.iloc[0])*100)
         all_symbols_data['last_price'] = all_symbols_data.groupby('symbol')['close'].transform(lambda x: x.iloc[-1])
         all_symbols_data['last_percent'] = all_symbols_data.groupby('symbol')['percent'].transform(lambda x: x.iloc[-1])
+        all_symbols_data.reset_index(drop=True, inplace=True)
         max_time_rows = all_symbols_data.loc[all_symbols_data.groupby('symbol')['date'].idxmax()]
-        valid_symbols = max_time_rows.loc[max_time_rows['percent'] > 1, 'symbol']
+        valid_symbols = max_time_rows.loc[max_time_rows['percent'] > 5, 'symbol']
         upside_stocks = all_symbols_data[all_symbols_data['symbol'].isin(valid_symbols)]
-        filtered_upside_stocks = upside_stocks[upside_stocks['percent'] > 1]
+        filtered_upside_stocks = upside_stocks[upside_stocks['percent'] > 5]
         symbol_upside_counts = filtered_upside_stocks['symbol'].value_counts()
-        valid_symbols = symbol_upside_counts[symbol_upside_counts >= 1].index
+        valid_symbols = symbol_upside_counts[symbol_upside_counts >= 2].index
         repetitive_upside_stocks = filtered_upside_stocks[filtered_upside_stocks['symbol'].isin(valid_symbols)]
+        repetitive_upside_stocks = repetitive_upside_stocks[repetitive_upside_stocks['percent'] > 10]
         repetitive_upside_stocks = repetitive_upside_stocks[["symbol", "last_price", "last_percent", "start_end_percent"]]
         return repetitive_upside_stocks
 

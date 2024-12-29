@@ -12,37 +12,46 @@ class StockInformation:
         self.stocks = list(set(stocks['symbol'].to_list()))
         self.start_time = start_time
         self.end_time = end_time
+        print(len(self.stocks))
 
     def get_all_symbols_information(self):
         all_news = []
         all_summarys = []
+        n=0
         for symbol in self.stocks:
-            stock_news = self.get_news(symbol)
+            print(n)
+            n+=1
             stock_summary = self.get_summary(symbol)
-            all_news += stock_news
-            all_summarys.append(stock_summary)
+            if stock_summary.get("marketCap", 0) > 200000000:
+                all_summarys.append(stock_summary)
+                stock_news = self.get_news(symbol)
+                all_news += stock_news
         return all_news, all_summarys
 
     def get_summary(self, symbol):
-        stock = yf.Ticker(symbol)
-        company_info = stock.info
-        keys_to_keep = ['longBusinessSummary', 'symbol']
-        company_summary = {key: value for key, value in company_info.items() if key in keys_to_keep}
-        key_mapping = {"longBusinessSummary": "company_overview"}
-        renamed_company_summary = {key_mapping.get(k, k): v for k, v in company_summary.items()}
+        params = {"apiKey": os.getenv("POLYGON_TOKEN")}
+        response = requests.get(url=STOCKS_DATA_CONFIG.POLYGON_FUNDAMENTALS_URL + symbol, params=params)
+        response_json = response.json()
+        long_business_summary = response_json.get("results", {"description": ""}).get('description', "")
+        market_cap = round(response_json.get("results", {"market_cap": 0}).get('market_cap', 0))
+        renamed_company_summary = {"symbol": symbol, "company_overview": long_business_summary, "marketCap": market_cap}
+        print("summary")
         return renamed_company_summary
 
     def get_news(self, symbol):
-        params = {"symbol": symbol,
-                  "from": self.start_time,
-                  "to": self.end_time,
-                  "token": os.getenv("FINNHUB_TOKEN")}
-        response = requests.get(url=STOCKS_DATA_CONFIG.FINNHUB_URL, params = params)
-        news = response.json()[:3]
-        keys_to_keep = ["headline", "url", "related"]
+        params = {"ticker": symbol,
+                  "published_utc.gte": self.start_time,
+                  "published_utc.lte": self.end_time,
+                  "limit": 3,
+                  "apiKey": os.getenv("POLYGON_TOKEN")}
+        response = requests.get(url=STOCKS_DATA_CONFIG.POLYGON_NEWS_URL, params = params)
+        news = response.json()["results"]
+        keys_to_keep = ["title", "article_url"]
         latest_news = [{key: d[key] for key in keys_to_keep if key in d} for d in news]
-        key_mapping = {"headline": "news_data", "url": "news_source", "related": "symbol"}
+        key_mapping = {"title": "news_data", "article_url": "news_source"}
         renamed_latest_news = [{key_mapping.get(k, k): v for k, v in news.items()} for news in latest_news]
+        renamed_latest_news = [{**data, "symbol": symbol} for data in renamed_latest_news]
+        print("news")
         return renamed_latest_news
 
 
