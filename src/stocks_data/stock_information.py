@@ -22,7 +22,7 @@ class StockInformation:
             print(n)
             n+=1
             stock_summary = self.get_summary(symbol)
-            if stock_summary.get("marketCap", 0) > 200000000:
+            if stock_summary.get("marketCap", 0) > 100000000:
                 all_summarys.append(stock_summary)
                 stock_news = self.get_news(symbol)
                 all_news += stock_news

@@ -33,14 +33,14 @@ class SymbolFinder:
         all_symbols_data['last_price'] = all_symbols_data.groupby('symbol')['close'].transform(lambda x: x.iloc[-1])
         all_symbols_data['last_percent'] = all_symbols_data.groupby('symbol')['percent'].transform(lambda x: x.iloc[-1])
         all_symbols_data.reset_index(drop=True, inplace=True)
-        max_time_rows = all_symbols_data.loc[all_symbols_data.groupby('symbol')['date'].idxmax()]
-        valid_symbols = max_time_rows.loc[max_time_rows['percent'] > 5, 'symbol']
-        upside_stocks = all_symbols_data[all_symbols_data['symbol'].isin(valid_symbols)]
-        filtered_upside_stocks = upside_stocks[upside_stocks['percent'] > 5]
+        # max_time_rows = all_symbols_data.loc[all_symbols_data.groupby('symbol')['date'].idxmax()]
+        # valid_symbols = max_time_rows.loc[max_time_rows['percent'] > 5, 'symbol']
+        # upside_stocks = all_symbols_data[all_symbols_data['symbol'].isin(valid_symbols)]
+        filtered_upside_stocks = all_symbols_data[all_symbols_data['percent'] > 5]
         symbol_upside_counts = filtered_upside_stocks['symbol'].value_counts()
-        valid_symbols = symbol_upside_counts[symbol_upside_counts >= 2].index
+        valid_symbols = symbol_upside_counts[symbol_upside_counts >= 3].index
         repetitive_upside_stocks = filtered_upside_stocks[filtered_upside_stocks['symbol'].isin(valid_symbols)]
-        repetitive_upside_stocks = repetitive_upside_stocks[repetitive_upside_stocks['percent'] > 10]
+        repetitive_upside_stocks = repetitive_upside_stocks[repetitive_upside_stocks['start_end_percent'] > 20]
         repetitive_upside_stocks = repetitive_upside_stocks[["symbol", "last_price", "last_percent", "start_end_percent"]]
         return repetitive_upside_stocks
 

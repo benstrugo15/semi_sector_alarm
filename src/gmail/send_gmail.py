@@ -10,7 +10,7 @@ from typing import Dict, List
 class EmailSender:
     def __init__(self, gmail_data: List[Dict[str, str]]):
         self.gmail_data = gmail_data
-        self.unique_sub_sectors = list(set(list({entry['sub_sector'] for entry in gmail_data})))
+        self.unique_sub_sectors = list(set(list({entry['sub_indestry'] for entry in gmail_data})))
         self.date = datetime.now().strftime("%Y-%m-%d")
 
     def send_email(self):
@@ -66,7 +66,7 @@ class EmailSender:
     def build_middle_html(self, html_content):
         for sub_sector in self.unique_sub_sectors:
             html_content += f"<h2>{sub_sector}</h2>"
-            sector_data = [item for item in self.gmail_data if item['sub_sector'] == sub_sector]
+            sector_data = [item for item in self.gmail_data if item['sub_indestry'] == sub_sector]
             for item in sector_data:
                 news_pieces = list(set(item['news_data'].split('***')))
                 sources = list(set(item['news_source'].split('***')))
@@ -80,9 +80,9 @@ class EmailSender:
                 <p><strong>מחיר:</strong> {item['last_price']}</p>
                 <p><strong>שינוי יומי:</strong> {str(round(int(item['last_percent'],2)))}%</p>
                 <p><strong>שינוי ב7 ימי המסחר האחרונים:</strong> {str(round(int(item['start_end_percent'],2)))}%</p>
-                <p><strong>סקירה על הסאב סקטור:</strong> {item['sub_sector_overview']}</p>
+                <p><strong>סקירה על הסאב סקטור:</strong> {item['sub_indestry_overview']}</p>
                 <p><strong>סקירה על המניות:</strong> {item['company_overview']}</p>
-                <p><strong>האם הסקטור הוא עם פוטנציאל לעתיד:</strong> {'כן' if item['is_semi_sector_future_potential'] else 'לא'} - {item['semi_sector_future_potential_overview']}</p>
+                <p><strong>האם הסקטור הוא עם פוטנציאל לעתיד:</strong> {'כן' if item['is_sub_indestry_future_potential'] else 'לא'} - {item['sub_sector_future_potential_overview']}</p>
                 <p><strong>חדשות תומכות:</strong> {news_html}</p>
                 """
         return html_content

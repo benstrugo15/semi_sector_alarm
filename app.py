@@ -3,7 +3,6 @@ import asyncio
 from src.alarm_pipeline.alarm_pipeline import AlarmPipe
 from datetime import datetime
 
-
 async def main():
     date_now = datetime.now()
     alarm_pipe = AlarmPipe(date_now)
