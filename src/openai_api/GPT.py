@@ -11,46 +11,57 @@ class GPTApi:
         self.stocks_overview = stocks_overview
         self.stocks_news = stocks_news
         self.relevant_stocks_prices = relevant_stocks_prices
+        self.openai_stock_system = "You are an assistant that provides stock-related insights."
+        self.openai_translate_system = "You are an assistant that translates text about (stocks, commpanies, sectors, core focus) from English to Hebrew."
 
     def gpt4_pipline(self):
         relevant_symbols_query = self.create_exploration_prompt(str(self.stocks_overview))
-        stocks_semi_sectors = self.query_gpt4(relevant_symbols_query)
+        stocks_semi_sectors = self.query_gpt4(relevant_symbols_query, self.openai_stock_system)
+        print(stocks_semi_sectors)
         relevant_semi_sectors = self.filter_single_sub_sectors(stocks_semi_sectors)
+        print(relevant_semi_sectors)
         relevant_semi_sectors_exploration = self.create_exploration_prompt2(str(relevant_semi_sectors))
-        semi_sectors_data = self.query_gpt4(relevant_semi_sectors_exploration)
+        semi_sectors_data = self.query_gpt4(relevant_semi_sectors_exploration, self.openai_stock_system)
         all_relevant_stocks_data = self.merge_stocks_data(stocks_semi_sectors, semi_sectors_data)
-        return all_relevant_stocks_data
+        all_translate_data = pd.DataFrame()
+        for name, group in all_relevant_stocks_data.groupby("core_focus"):
+            group_prompt = self.translate_prompt(group)
+            all_group_translate_data = self.query_gpt4(group_prompt, self.openai_translate_system)
+            all_translate_data = pd.concat([all_translate_data, pd.DataFrame(all_group_translate_data)])
+        print(all_translate_data.to_dict(orient="records"))
+        return all_translate_data.to_dict(orient="records")
 
-    def query_gpt4(self, message_text):
+    def query_gpt4(self, message_text, system_content: str):
         data = {
             "model": OPEN_AI_CONFIG.MODEL,
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are an assistant that provides stock-related insights."
+                    "content": system_content
                 }
 
                 ,
                 {"role": "user",
                   "content": message_text
                   }
-            ]
+            ],
+            "temperature": 0
             
         }
         headers = {"Content-Type": "application/json", "Authorization": os.getenv("OPENAI_TOKEN")}
-        response = requests.post(OPEN_AI_CONFIG.URL, headers=headers, json=data)
         retry=3
         for i in range(retry):
             try:
+                response = requests.post(OPEN_AI_CONFIG.URL, headers=headers, json=data)
                 response_data = response.json()['choices'][0]['message']['content']
                 start_index = response_data.find("[")
                 end_index = response_data.rfind("]") + 1
                 parse_data = json.loads(response_data[start_index: end_index])
                 return parse_data
             except:
-                print(response.text)
                 if i ==retry-1:
-                    raise response.text
+                    raise ValueError(f"GPT ERROR {i}")
+
 
     def merge_stocks_data(self, stocks_semi_sectors: List[Dict[str, str]], stocks_semi_sectors_exploration: List[Dict[str, str]]):
         organized_stocks_semi_sectors_exploration = pd.DataFrame(stocks_semi_sectors_exploration)
@@ -60,41 +71,39 @@ class GPTApi:
         organized_stocks_overview = pd.DataFrame(self.stocks_overview)
         all_relevant_data = organized_stocks_semi_sectors.merge(organized_stocks_semi_sectors_exploration, on="core_focus").\
             merge(organized_stocks_news, on="symbol", how="left").\
-            merge(organized_stocks_overview, on="symbol").merge(self.relevant_stocks_prices, on="symbol").drop_duplicates()
+            merge(organized_stocks_overview, on="symbol").merge(pd.DataFrame(self.relevant_stocks_prices), on="symbol").drop_duplicates().fillna("no data")
         grouped = all_relevant_data.groupby('symbol').agg({
             'news_source': '***'.join,'news_data': '***'.join}).reset_index()
         other_columns = all_relevant_data.drop(['news_source', 'news_data'], axis=1).drop_duplicates()
         concat_data = pd.merge(grouped, other_columns, on='symbol', how='left')
-        return concat_data.to_dict(orient="records")
+        return concat_data
 
     def filter_single_sub_sectors(self, stocks_semi_sectors: List[Dict[str, str]]):
         semi_sectors = pd.DataFrame(stocks_semi_sectors)
-        semi_sectors["core_focus_count"] = semi_sectors.groupby("core_focus")["symbol"].transform('count')
+        semi_sectors["core_focus_count"] = semi_sectors.groupby("core_focus")["symbol"].transform('nunique')
         semi_sectors = semi_sectors[semi_sectors["core_focus_count"] > 1]
         core_focus = [{"core_focus": x} for x in semi_sectors["core_focus"].unique()]
         return core_focus
 
-
     @staticmethod
     def create_exploration_prompt(symbols: str):
-        return f"""
+        return f""" 
                 Provide the response in JSON format, with no ' character,
-                i give you list of dicts, every dict have 2 keys: symbol, company_overview,
-                the symbol is a stock symbol,
-                and the company_overview is a company overview
-                use the data i provide you, to add every dict, 1 more keys:
-                "core_focus" and the value of the core_focus.
-                the core_focus value will be "core focus of the company (symbol).
-                for example: "quantum computing"
-                if there are stocks symbols that have similar core_focus, give them the same core_focus value.
-                for example: 
-                if multiple company's core_focus is around "nuclear energy" or "nuclear power",
-                give them the same core_focus value,
-                but if multiple company's about energy, one about "solar energy" and one about "nuclear energy",
-                they will have different core_focus.
+                "Given a list of dictionaries where each dictionary contains the keys 'symbol'
+                and 'company_overview' representing a stock symbol and its company's overview
+                respectively, enhance each dictionary by adding a new key 'core_focus'.
+                The value for 'core_focus' should describe the main area of business or technology 
+                focus for the company in a very clear and concise format (describe core_focus in maximum 3 words).
+                For companies with overlapping or very similar business areas, such as those involved in 'nuclear energy'
+                and 'nuclear power', assign the exact same 'core_focus' value to ensure consistency across similar categories.
+                However, companies that broadly work within the same sector but have different specific focuses,
+                such as one in 'solar energy' and another in 'nuclear energy', should have distinct 'core_focus' values.
+                Use the provided data to determine the appropriate 'core_focus' for each company."
                 
                 to make the response shorter, for every dict remove the "company_overview" key,
                 and stay with those keys: symbol, core_focus.
+                
+                remember to return valid json, because it an api request and i need to be able to parse your response
                 the data you need to work on: 
 
                 {symbols}"""
@@ -114,9 +123,25 @@ class GPTApi:
                 "core_focus_future_potential_overview": the value will be the reason it have 
                 potential to significantly change the future in the world in a larger scale. 
             
+                remember to return valid json, because it an api request and i need to be able to parse your response
                 the data you need to work on: 
                 
                 {symbols}"""
+
+    @staticmethod
+    def translate_prompt(all_relevant_stocks_data: pd.DataFrame):
+        data = str(all_relevant_stocks_data.to_dict(orient = "records"))
+        return f"""
+                Provide the response in JSON format (list of dicts), with no ' character,
+                i give you list of dicts
+                please translate to hebrew all the values in all the keys for all the dicts
+                keep all the keys the same name, just translate all the values to hebrew,
+                translate everything.
+                remember to return valid json, because its an api request and i need to be able to parse your response
+
+                the data you need to work on: 
+
+                {data}"""
 
 
 if __name__ == '__main__':

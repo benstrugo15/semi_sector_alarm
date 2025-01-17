@@ -4,16 +4,15 @@ from src.openai_api.GPT import GPTApi
 from src.stocks_data.stock_information import StockInformation
 from datetime import datetime, timedelta
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, Union
+
 
 class AlarmPipe:
-    def __init__(self, date_now: datetime):
-        self.end_time = "2024-10-21"
-        self.start_time = "2024-10-11"
-        # self.end_time = (date_now- timedelta(days=3)).strftime("%Y-%m-%d")
-        # self.start_time = (date_now - timedelta(days=11)).strftime("%Y-%m-%d")
+    def __init__(self, date: datetime):
+        self.end_time = date.strftime("%Y-%m-%d")
+        self.start_time = (date - timedelta(days=10)).strftime("%Y-%m-%d")
 
-    async def get_repetative_upside_stocks(self):
+    async def get_repetitive_upside_stocks(self):
         stock_data_finder = SymbolFinder(self.start_time, self.end_time)
         relevant_stocks_prices = await stock_data_finder.get_relevant_data()
         return relevant_stocks_prices
@@ -29,10 +28,9 @@ class AlarmPipe:
         email_data = gpt_api.gpt4_pipline()
         return email_data
 
-    @staticmethod
-    def send_email(email_data: List[Dict[str, str]]):
-        email_sender = EmailSender(email_data)
-        send_mail = email_sender.send_email()
+    def send_email(self, email_data: Union[str, List[Dict[str, str]]], is_error=None):
+        email_sender = EmailSender(self.end_time)
+        send_mail = email_sender.send_email(email_data, is_error)
         return send_mail
 
 
