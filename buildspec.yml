@@ -13,5 +13,4 @@ phases:
     commands:
       - echo Pushing Docker image to ECR...
       - docker push 761018889186.dkr.ecr.eu-north-1.amazonaws.com/stock-alert:latest
-      - echo Updating ECS service...
-      - aws ecs update-service --cluster my-cluster --service my-service --force-new-deployment
+      - echo ECS Task will be triggered automatically via EventBridge
