@@ -7,11 +7,11 @@ phases:
   build:
     commands:
       - echo "Building Docker image..."
-      - docker build -t my-project .
-      - docker tag my-project:latest 761018889186.dkr.ecr.us-east-1.amazonaws.com/my-project:latest
+      - docker build -t stock-alert .
+      - docker tag stock-alert:latest 761018889186.dkr.ecr.us-east-1.amazonaws.com/stock-alert:latest
   post_build:
     commands:
       - echo Pushing Docker image to ECR...
-      - docker push 761018889186.dkr.ecr.us-east-1.amazonaws.com/my-project:latest
+      - docker push 761018889186.dkr.ecr.us-east-1.amazonaws.com/stock-alert:latest
       - echo Updating ECS service...
       - aws ecs update-service --cluster my-cluster --service my-service --force-new-deployment
