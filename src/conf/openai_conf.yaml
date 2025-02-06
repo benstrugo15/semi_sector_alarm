@@ -1,5 +1,5 @@
 URL: "https://api.openai.com/v1/chat/completions"
 RETRY: 3
-MODEL: "gpt-4"
+MODEL: "gpt-4-turbo"
 ROLE: "user"
 

@@ -1,0 +1,17 @@
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
+  build:
+    commands:
+      - echo "Building Docker image..."
+      - docker build -t my-project .
+      - docker tag my-project:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/my-project:latest
+  post_build:
+    commands:
+      - echo Pushing Docker image to ECR...
+      - docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/my-project:latest
+      - echo Updating ECS service...
+      - aws ecs update-service --cluster my-cluster --service my-service --force-new-deployment

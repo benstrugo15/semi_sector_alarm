@@ -58,14 +58,16 @@ class GPTApi:
                 end_index = response_data.rfind("]") + 1
                 parse_data = json.loads(response_data[start_index: end_index])
                 return parse_data
-            except:
+            except Exception as e:
                 if i ==retry-1:
-                    raise ValueError(f"GPT ERROR {i}")
+                    raise ValueError(f"GPT ERROR - {e}")
 
 
     def merge_stocks_data(self, stocks_semi_sectors: List[Dict[str, str]], stocks_semi_sectors_exploration: List[Dict[str, str]]):
         organized_stocks_semi_sectors_exploration = pd.DataFrame(stocks_semi_sectors_exploration)
         organized_stocks_semi_sectors_exploration = organized_stocks_semi_sectors_exploration[organized_stocks_semi_sectors_exploration["is_core_focus_future_potential"] == True]
+        if organized_stocks_semi_sectors_exploration.empty:
+            raise ValueError("no relevant semi sectors")
         organized_stocks_semi_sectors = pd.DataFrame(stocks_semi_sectors)
         organized_stocks_news = pd.DataFrame(self.stocks_news)
         organized_stocks_overview = pd.DataFrame(self.stocks_overview)
@@ -83,6 +85,8 @@ class GPTApi:
         semi_sectors["core_focus_count"] = semi_sectors.groupby("core_focus")["symbol"].transform('nunique')
         semi_sectors = semi_sectors[semi_sectors["core_focus_count"] > 1]
         core_focus = [{"core_focus": x} for x in semi_sectors["core_focus"].unique()]
+        if not core_focus:
+            raise ValueError("no relevant semi sectors")
         return core_focus
 
     @staticmethod

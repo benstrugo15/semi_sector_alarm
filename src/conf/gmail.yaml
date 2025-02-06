@@ -1,6 +1,7 @@
 FROM: "benstrugo2001@gmail.com"
 TO:
   - "benstrugo2001@gmail.com"
+  - "kikarhamedina28@gmail.com"
 SMTP_SERVER: "smtp.gmail.com"
 SMTP_PORT: 587
 
