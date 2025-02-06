@@ -3,15 +3,15 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
-      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 761018889186.dkr.ecr.us-east-1.amazonaws.com
+      - aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin 761018889186.dkr.ecr.eu-north-1.amazonaws.com
   build:
     commands:
       - echo "Building Docker image..."
       - docker build -t stock-alert .
-      - docker tag stock-alert:latest 761018889186.dkr.ecr.us-east-1.amazonaws.com/stock-alert:latest
+      - docker tag stock-alert:latest 761018889186.dkr.ecr.eu-north-1.amazonaws.com/stock-alert:latest
   post_build:
     commands:
       - echo Pushing Docker image to ECR...
-      - docker push 761018889186.dkr.ecr.us-east-1.amazonaws.com/stock-alert:latest
+      - docker push 761018889186.dkr.ecr.eu-north-1.amazonaws.com/stock-alert:latest
       - echo Updating ECS service...
       - aws ecs update-service --cluster my-cluster --service my-service --force-new-deployment
