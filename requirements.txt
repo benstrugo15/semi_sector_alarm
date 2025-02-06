@@ -5,3 +5,4 @@ pydantic
 secure-smtplib
 aiohttp
 aiolimiter
+yfinance

@@ -19,6 +19,9 @@ class StocksDataConf(BaseModel):
     NYSE: str
     RETRY: int
     PERCENT_FILTER: int
+    FINNHUB_NEWS_URL: str
+    POLYGON_FUNDAMENTALS_URL: str
+    POLYGON_NEWS_URL: str
 
 
 class GmailConf(BaseModel):
