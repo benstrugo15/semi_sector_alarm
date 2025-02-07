@@ -1,0 +1,28 @@
+name: Daily Docker Run
+
+on:
+  schedule:
+    - cron: "0 8 * * 2-6" 
+  workflow_dispatch:
+
+jobs:
+  run_docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v3
+
+      - name: Build Docker Image
+        run: |
+          docker build -t my-app .
+
+      - name: Run Docker Container with Secrets
+        run: |
+          docker run --rm \
+            -e EOD_TOKEN="${{ secrets.EOD_TOKEN }}" \
+            -e FINNHUB_TOKEN="${{ secrets.FINNHUB_TOKEN }}" \
+            -e GMAIL_PASSWORD="${{ secrets.GMAIL_PASSWORD }}" \
+            -e OPENAI_TOKEN="${{ secrets.OPENAI_TOKEN }}" \
+            -e POLYGON_TOKEN="${{ secrets.POLYGON_TOKEN }}" \
+            my-app
