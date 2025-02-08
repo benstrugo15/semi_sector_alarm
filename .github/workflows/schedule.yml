@@ -2,7 +2,7 @@ name: Daily Docker Run
 
 on:
   schedule:
-    - cron: "*/5 * * * *" 
+    - cron: "0 5 * * 2-6" 
   workflow_dispatch:
 
 jobs:
